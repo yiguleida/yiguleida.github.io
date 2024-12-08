@@ -1,0 +1,1218 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票分析与AI建议</title>
+    <!-- 引入Bootstrap CSS框架 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入Plotly.js库 -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- 引入Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"
+        integrity="sha384-f4g/J4nIoVgIhtz0nMy1pVyvLoh/vfNQW22Hn00FsJ7VlfuQbxIsBBuScxJGgNtw"
+        crossorigin="anonymous"></script>
+    <!-- 引入SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- 自定义CSS样式 -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            padding: 20px;
+            color: #f5f5f5;
+        }
+
+        .container {
+            background-color: #2c2f38;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            padding: 30px;
+        }
+
+        h1,
+        h2 {
+            color: #f0ad4e;
+        }
+
+        .form-label {
+            color: #f5f5f5;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #3a3f47;
+            color: #f5f5f5;
+            border: 1px solid #555;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background-color: #4a4f57;
+            color: #fff;
+            border-color: #f0ad4e;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+
+        .table-dark th,
+        .table-dark td {
+            color: #f5f5f5;
+        }
+
+        .table-dark thead th {
+            background-color: #343a40;
+        }
+
+        .alert-info {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+
+        .alert-danger {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        a.text-warning:hover {
+            text-decoration: underline;
+        }
+
+        .sector-section,
+        .recommendations-section,
+        .analysis-section,
+        .report-section,
+        .ai-section,
+        .top-ai-analysis-section,
+        .stock-analysis-section {
+            margin-top: 30px;
+        }
+
+        .recommendation-item {
+            background-color: #3e4349;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .stock-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+            border: 1px solid #555;
+            padding: 10px;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .draggable-stock {
+            background-color: #3e4349;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: grab;
+            position: relative;
+            user-select: none;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .draggable-stock:hover {
+            background-color: #50575e;
+        }
+
+        /* Tooltip Styling */
+        .draggable-stock[data-bs-toggle="tooltip"] {
+            cursor: pointer;
+        }
+
+        /* Scrollbar Styling */
+        .stock-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .stock-list::-webkit-scrollbar-track {
+            background: #2c2f38;
+        }
+
+        .stock-list::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 4px;
+        }
+
+        /* Stock Analysis Display */
+        .stock-analysis {
+            background-color: #3a3f47;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .stock-analysis h4 {
+            color: #f0ad4e;
+            margin-bottom: 15px;
+        }
+
+        .stock-analysis .plot {
+            margin-bottom: 20px;
+            height: 300px;
+        }
+
+        .stock-analysis .ai-prediction {
+            color: #17a2b8;
+        }
+
+        /* Floating AI Window */
+        .floating-ai-window {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-height: 80%;
+            background-color: #2c2f38;
+            border: 1px solid #555;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .floating-ai-header {
+            background-color: #343a40;
+            padding: 10px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .floating-ai-header h5 {
+            margin: 0;
+            color: #f0ad4e;
+        }
+
+        .floating-ai-body {
+            padding: 10px;
+            overflow-y: auto;
+            flex-grow: 1;
+            height: 200px;
+        }
+
+        .floating-ai-footer {
+            padding: 10px;
+            background-color: #343a40;
+            display: flex;
+            gap: 5px;
+        }
+
+        .floating-ai-footer input {
+            flex-grow: 1;
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a4f57;
+            color: #fff;
+        }
+
+        .floating-ai-footer button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        /* Draggable Stock Analysis Window */
+        .stock-analysis-window {
+            position: fixed;
+            top: 100px;
+            left: 20px;
+            width: 600px;
+            max-height: 80%;
+            background-color: #2c2f38;
+            border: 1px solid #555;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            display: none;
+        }
+
+        .stock-analysis-header {
+            background-color: #343a40;
+            padding: 10px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stock-analysis-header h5 {
+            margin: 0;
+            color: #f0ad4e;
+        }
+
+        .stock-analysis-body {
+            padding: 10px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .stock-analysis-footer {
+            padding: 10px;
+            background-color: #343a40;
+            display: flex;
+            gap: 5px;
+        }
+
+        .stock-analysis-footer input {
+            flex-grow: 1;
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a4f57;
+            color: #fff;
+        }
+
+        .stock-analysis-footer button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        /* Modal Styling */
+        .modal-content.bg-dark {
+            background-color: #2c2f38;
+            color: #f5f5f5;
+        }
+
+        .btn-close.btn-close-white {
+            filter: invert(1);
+        }
+
+        /* Chat Styling */
+        .chat-box .chat-message {
+            margin-bottom: 10px;
+            display: flex;
+        }
+
+        .chat-box .chat-message.user {
+            justify-content: flex-end;
+        }
+
+        .chat-box .chat-message.ai {
+            justify-content: flex-start;
+        }
+
+        .chat-box .message {
+            padding: 8px 12px;
+            border-radius: 15px;
+            max-width: 80%;
+            display: inline-block;
+        }
+
+        .chat-box .chat-message.user .message {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .chat-box .chat-message.ai .message {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+
+        /* Responsive Plotly Graphs */
+        .plotly-graph-div {
+            width: 100% !important;
+            height: 300px !important;
+        }
+
+        /* 禁止文字选择 */
+        .no-select {
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="text-center">股票分析与AI建议</h1>
+
+        <!-- 导航选项卡 -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button"
+                    role="tab" aria-controls="search" aria-selected="true">股票搜索</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="recommendations-tab" data-bs-toggle="tab" data-bs-target="#recommendations"
+                    type="button" role="tab" aria-controls="recommendations" aria-selected="false">股票推荐</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sectors-tab" data-bs-toggle="tab" data-bs-target="#sectors" type="button"
+                    role="tab" aria-controls="sectors" aria-selected="false">股票板块</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button"
+                    role="tab" aria-controls="reports" aria-selected="false">财经分析报告</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="top-ai-analysis-tab" data-bs-toggle="tab" data-bs-target="#top-ai-analysis" type="button"
+                    role="tab" aria-controls="top-ai-analysis" aria-selected="false">最佳股票 AI 分析</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button"
+                    role="tab" aria-controls="chat" aria-selected="false">实时聊天</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <!-- 股票搜索选项卡 -->
+            <div class="tab-pane fade show active" id="search" role="tabpanel" aria-labelledby="search-tab">
+                <form id="search-form" class="mt-4" novalidate>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="symbol" class="form-label">股票代码 (如 600519)</label>
+                            <input type="text" class="form-control" id="symbol" placeholder="输入股票代码" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="start_date" class="form-label">开始日期</label>
+                            <input type="date" class="form-control" id="start_date">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="end_date" class="form-label">结束日期</label>
+                            <input type="date" class="form-control" id="end_date">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="data_type" class="form-label">选择数据类型</label>
+                            <select class="form-select" id="data_type">
+                                <option value="close_price">收盘价</option>
+                                <option value="open_price">开盘价</option>
+                                <option value="volume">成交量</option>
+                                <option value="turnover_rate">换手率</option>
+                                <option value="fund_flow">资金流入流出</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">搜索</button>
+                    </div>
+                </form>
+
+                <!-- 搜索结果显示 -->
+                <div id="search-results" class="mt-4">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
+
+            <!-- 股票推荐选项卡 -->
+            <div class="tab-pane fade" id="recommendations" role="tabpanel" aria-labelledby="recommendations-tab">
+                <div class="recommendations-section">
+                    <h2>股票推荐</h2>
+                    <div class="stock-list mt-3" id="recommendations-stock-list">
+                        <!-- 股票模块将动态添加 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 股票板块选项卡 -->
+            <div class="tab-pane fade" id="sectors" role="tabpanel" aria-labelledby="sectors-tab">
+                <div class="sector-section">
+                    <h2>股票板块</h2>
+                    <form id="sector-form" class="mt-4">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="sector" class="form-label">选择板块</label>
+                                <select class="form-select" id="sector">
+                                    <option value="">选择一个板块</option>
+                                    <option value="tech">科技</option>
+                                    <option value="health">医疗</option>
+                                    <option value="finance">金融</option>
+                                    <option value="energy">能源</option>
+                                    <!-- 添加更多板块 -->
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 板块股票列表 -->
+                    <div id="sectors-stock-list" class="stock-list mt-3">
+                        <!-- 动态内容 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 财经分析报告选项卡 -->
+            <div class="tab-pane fade" id="reports" role="tabpanel" aria-labelledby="reports-tab">
+                <div class="report-section">
+                    <h2>最新财经分析报告</h2>
+                    <ul class="list-group mt-3" id="latest-reports">
+                        <!-- 动态内容 -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 最佳股票 AI 分析选项卡 -->
+            <div class="tab-pane fade" id="top-ai-analysis" role="tabpanel" aria-labelledby="top-ai-analysis-tab">
+                <div class="top-ai-analysis-section">
+                    <h2>最佳股票 AI 分析</h2>
+                    <div id="top-ai-analysis" class="mt-3">
+                        <!-- 动态内容 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 实时聊天选项卡 -->
+            <div class="tab-pane fade" id="chat" role="tabpanel" aria-labelledby="chat-tab">
+                <div class="chat-section">
+                    <h2>实时聊天</h2>
+                    <div class="chat-box" id="chat-box" style="height: 300px; overflow-y: auto; background-color: #3a3f47; padding: 10px; border-radius: 5px;">
+                        <!-- Chat messages will appear here -->
+                    </div>
+                    <form id="chat-form" class="mt-3">
+                        <div class="input-group">
+                            <input type="text" id="chat-input" class="form-control" placeholder="输入消息..." autocomplete="off">
+                            <button class="btn btn-primary" type="submit">发送</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 股票分析窗口 -->
+        <div class="stock-analysis-window" id="stock-analysis-window">
+            <div class="stock-analysis-header">
+                <h5>股票分析</h5>
+                <button type="button" class="btn btn-sm btn-secondary" id="toggle-stock-analysis-window">&times;</button>
+            </div>
+            <div class="stock-analysis-body" id="stock-analysis-body">
+                <p>将股票拖动到此窗口进行分析。</p>
+            </div>
+            <div class="stock-analysis-footer">
+                <input type="text" id="stock-analysis-input" placeholder="输入问题..." autocomplete="off">
+                <button id="stock-analysis-send-btn">发送</button>
+            </div>
+        </div>
+
+        <!-- Floating AI Window -->
+        <div class="floating-ai-window" id="floating-ai-window">
+            <div class="floating-ai-header">
+                <h5>AI助手</h5>
+                <button type="button" class="btn btn-sm btn-secondary" id="toggle-ai-window">&times;</button>
+            </div>
+            <div class="floating-ai-body" id="ai-chat-box">
+                <!-- AI聊天内容 -->
+            </div>
+            <div class="floating-ai-footer">
+                <input type="text" id="ai-input" placeholder="输入消息..." autocomplete="off">
+                <button id="ai-send-btn">发送</button>
+            </div>
+        </div>
+
+        <!-- Modal for AI Introduction -->
+        <div class="modal fade" id="aiIntroModal" tabindex="-1" aria-labelledby="aiIntroModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content bg-dark text-light">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="aiIntroModalLabel">AI介绍</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>
+                            本应用集成了先进的AI技术，通过分析股票历史数据和市场动态，为您提供精准的投资建议和深入的市场洞察。AI分析涵盖多种指标，包括但不限于资金流入流出、换手率、成交量等，帮助您做出明智的投资决策。
+                        </p>
+                        <p>
+                            我们的AI助手利用最新的自然语言处理技术，能够理解并分析复杂的金融数据，为用户提供个性化的投资建议。无论您是资深投资者还是初学者，本应用都能为您提供有价值的参考信息。
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 引入Bootstrap JS和依赖 -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- JavaScript部分 -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // 初始化 Bootstrap Tabs 和 Tooltips
+                var triggerTabList = [].slice.call(document.querySelectorAll('#myTab button'))
+                triggerTabList.forEach(function (triggerEl) {
+                    var tabTrigger = new bootstrap.Tab(triggerEl)
+
+                    triggerEl.addEventListener('click', function (event) {
+                        event.preventDefault()
+                        tabTrigger.show()
+                    })
+                })
+
+                // Initialize Bootstrap Tooltips
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                })
+
+                // Initialize Socket.IO
+                var socket = io();
+
+                // Handle incoming chat messages
+                socket.on('message', function(data) {
+                    var chatBox = document.getElementById('chat-box');
+                    var msgDiv = document.createElement('div');
+                    msgDiv.classList.add('chat-message', data.sender === 'AI' ? 'ai' : 'user');
+                    var messageContent = document.createElement('div');
+                    messageContent.classList.add('message');
+                    messageContent.textContent = data.message;
+                    msgDiv.appendChild(messageContent);
+                    chatBox.appendChild(msgDiv);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+
+                // Handle chat form submission
+                var chatForm = document.getElementById('chat-form');
+                chatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var chatInput = document.getElementById('chat-input');
+                    var message = chatInput.value.trim();
+                    if (message) {
+                        socket.emit('send_message', {'message': message});
+                        appendChatMessage('用户', message, 'chat-box');
+                        chatInput.value = '';
+                    }
+                });
+
+                // Handle AI assistant chat
+                var aiSendBtn = document.getElementById('ai-send-btn');
+                aiSendBtn.addEventListener('click', function() {
+                    var aiInput = document.getElementById('ai-input');
+                    var message = aiInput.value.trim();
+                    if (message) {
+                        socket.emit('send_message', {'message': message});
+                        appendChatMessage('用户', message, 'ai-chat-box');
+                        aiInput.value = '';
+                    }
+                });
+
+                // Handle AI assistant responses in floating AI window
+                socket.on('ai_message', function(data) {
+                    appendChatMessage('AI', data.message, 'ai-chat-box');
+                });
+
+                // 聊天消息追加函数
+                function appendChatMessage(sender, message, chatBoxId) {
+                    var chatBox = document.getElementById(chatBoxId);
+                    var msgDiv = document.createElement('div');
+                    msgDiv.classList.add('chat-message', sender === 'AI' ? 'ai' : 'user');
+                    var messageContent = document.createElement('div');
+                    messageContent.classList.add('message');
+                    messageContent.textContent = message;
+                    msgDiv.appendChild(messageContent);
+                    chatBox.appendChild(msgDiv);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+
+                // Initialize SortableJS for draggable stocks in recommendations
+                var recommendationsStockList = document.getElementById('recommendations-stock-list');
+                if (recommendationsStockList) {
+                    new Sortable(recommendationsStockList, {
+                        group: 'stocks',
+                        animation: 150,
+                        draggable: '.draggable-stock',
+                        onEnd: function (evt) {
+                            var itemEl = evt.item;
+                            var ts_code = itemEl.getAttribute('data-ts-code');
+                            console.log('拖动结束，股票代码:', ts_code);
+                            analyzeStock(ts_code);
+                        }
+                    });
+                }
+
+                // Initialize SortableJS for draggable stocks in sectors
+                var sectorsStockList = document.getElementById('sectors-stock-list');
+                if (sectorsStockList) {
+                    new Sortable(sectorsStockList, {
+                        group: 'stocks',
+                        animation: 150,
+                        draggable: '.draggable-stock',
+                        onEnd: function (evt) {
+                            var itemEl = evt.item;
+                            var ts_code = itemEl.getAttribute('data-ts-code');
+                            console.log('拖动结束，股票代码:', ts_code);
+                            analyzeStock(ts_code);
+                        }
+                    });
+                }
+
+                // Initialize SortableJS for Stock Analysis Window
+                var stockAnalysisWindow = document.getElementById('stock-analysis-window');
+                var stockAnalysisBody = document.getElementById('stock-analysis-body');
+
+                new Sortable(stockAnalysisBody, {
+                    group: 'stocks',
+                    animation: 150,
+                    draggable: '.draggable-stock',
+                    onAdd: function (evt) {
+                        var itemEl = evt.item;
+                        var ts_code = itemEl.getAttribute('data-ts-code');
+                        console.log('分析窗口接收到股票代码:', ts_code);
+                        analyzeStock(ts_code);
+                    }
+                });
+
+                // Function to analyze stock by sending AJAX request
+                async function analyzeStock(ts_code) {
+                    try {
+                        // 显示加载指示器
+                        stockAnalysisBody.innerHTML = `
+                            <h4>${ts_code}</h4>
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        `;
+
+                        // 获取股票数据
+                        const stockResponse = await fetch(`/api/stocks/${ts_code}`);
+                        if (!stockResponse.ok) {
+                            throw new Error('获取股票数据失败');
+                        }
+                        const stockData = await stockResponse.json();
+
+                        // 调用AI分析端点
+                        const aiResponse = await fetch('/api/ai-analyze', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                symbol: stockData.symbol,
+                                historical_prices: stockData.historical_prices
+                            })
+                        });
+
+                        if (!aiResponse.ok) {
+                            throw new Error('AI分析请求失败');
+                        }
+
+                        const aiData = await aiResponse.json();
+                        const ai_analysis = aiData.analysis;
+
+                        // 获取相关报告（可以根据需要调整API端点）
+                        const reportsResponse = await fetch('/api/reports');
+                        const reportsData = await reportsResponse.json();
+
+                        // 显示分析结果
+                        displayStockAnalysis(stockData, ai_analysis, reportsData);
+                        showStockAnalysisWindow();
+                    } catch (error) {
+                        console.error('分析股票时出错:', error);
+                        stockAnalysisBody.innerHTML = `
+                            <h4>${ts_code}</h4>
+                            <div class="alert alert-danger">
+                                分析过程中发生错误，请稍后再试。
+                            </div>
+                        `;
+                    }
+                }
+
+                // Function to display stock analysis in the analysis window
+                function displayStockAnalysis(data, ai_analysis, reports) {
+                    var stockAnalysisBody = document.getElementById('stock-analysis-body');
+                    // 清除现有内容
+                    stockAnalysisBody.innerHTML = '';
+
+                    // 创建分析内容
+                    var analysisHeader = document.createElement('h4');
+                    analysisHeader.textContent = `${data.symbol} - ${data.name}`;
+                    stockAnalysisBody.appendChild(analysisHeader);
+
+                    // 创建图表容器
+                    var chartsDiv = document.createElement('div');
+                    chartsDiv.classList.add('chart-container');
+
+                    // 资金流入流出图
+                    var capitalFlowDiv = document.createElement('div');
+                    capitalFlowDiv.id = 'capitalFlowChart';
+                    capitalFlowDiv.classList.add('plot');
+                    chartsDiv.appendChild(capitalFlowDiv);
+
+                    // 换手率图
+                    var turnoverRateDiv = document.createElement('div');
+                    turnoverRateDiv.id = 'turnoverRateChart';
+                    turnoverRateDiv.classList.add('plot');
+                    chartsDiv.appendChild(turnoverRateDiv);
+
+                    // 趋势图
+                    var trendDiv = document.createElement('div');
+                    trendDiv.id = 'trendChart';
+                    trendDiv.classList.add('plot');
+                    chartsDiv.appendChild(trendDiv);
+
+                    stockAnalysisBody.appendChild(chartsDiv);
+
+                    // 渲染图表
+                    renderCharts(data);
+
+                    // AI 分析结果
+                    var aiAnalysisDiv = document.createElement('div');
+                    aiAnalysisDiv.classList.add('stock-analysis', 'mt-3');
+                    aiAnalysisDiv.innerHTML = `
+                        <h4>AI 分析结果</h4>
+                        <p>${ai_analysis}</p>
+                    `;
+                    stockAnalysisBody.appendChild(aiAnalysisDiv);
+
+                    // 相关报告
+                    if (reports.length > 0) {
+                        var reportsDiv = document.createElement('div');
+                        reportsDiv.classList.add('stock-analysis', 'mt-3');
+                        reportsDiv.innerHTML = `
+                            <h4>相关分析报告</h4>
+                            <ul>
+                                ${reports.map(report => `<li><a href="${report.link}" target="_blank">${report.title}</a></li>`).join('')}
+                            </ul>
+                        `;
+                        stockAnalysisBody.appendChild(reportsDiv);
+                    }
+                }
+
+                // 渲染图表
+                function renderCharts(data) {
+                    // 资金流入流出图
+                    var capitalFlowTrace1 = {
+                        x: Array.from({ length: data.capital_flow_in.length }, (_, i) => `Day ${i + 1}`),
+                        y: data.capital_flow_in,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: '资金流入',
+                        line: { color: 'green' }
+                    };
+                    var capitalFlowTrace2 = {
+                        x: Array.from({ length: data.capital_flow_out.length }, (_, i) => `Day ${i + 1}`),
+                        y: data.capital_flow_out,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: '资金流出',
+                        line: { color: 'red' }
+                    };
+                    var capitalFlowData = [capitalFlowTrace1, capitalFlowTrace2];
+                    var capitalFlowLayout = {
+                        title: '资金流入流出',
+                        plot_bgcolor: '#2c2f38',
+                        paper_bgcolor: '#2c2f38',
+                        font: { color: '#f5f5f5' },
+                        xaxis: { title: '时间' },
+                        yaxis: { title: '金额' }
+                    };
+                    Plotly.newPlot('capitalFlowChart', capitalFlowData, capitalFlowLayout);
+
+                    // 换手率图
+                    var turnoverRateTrace = {
+                        x: Array.from({ length: data.turnover_rate.length }, (_, i) => `Day ${i + 1}`),
+                        y: data.turnover_rate,
+                        type: 'bar',
+                        name: '换手率 (%)',
+                        marker: { color: 'blue' }
+                    };
+                    var turnoverRateData = [turnoverRateTrace];
+                    var turnoverRateLayout = {
+                        title: '换手率',
+                        plot_bgcolor: '#2c2f38',
+                        paper_bgcolor: '#2c2f38',
+                        font: { color: '#f5f5f5' },
+                        xaxis: { title: '时间' },
+                        yaxis: { title: '换手率 (%)' }
+                    };
+                    Plotly.newPlot('turnoverRateChart', turnoverRateData, turnoverRateLayout);
+
+                    // 趋势图
+                    var trendTrace = {
+                        x: Array.from({ length: data.trend.length }, (_, i) => `Day ${i + 1}`),
+                        y: data.trend,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: '趋势',
+                        line: { color: 'purple' }
+                    };
+                    var trendData = [trendTrace];
+                    var trendLayout = {
+                        title: '趋势',
+                        plot_bgcolor: '#2c2f38',
+                        paper_bgcolor: '#2c2f38',
+                        font: { color: '#f5f5f5' },
+                        xaxis: { title: '时间' },
+                        yaxis: { title: '价格' }
+                    };
+                    Plotly.newPlot('trendChart', trendData, trendLayout);
+                }
+
+                // 处理搜索表单提交
+                var searchForm = document.getElementById('search-form');
+                searchForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    var symbol = document.getElementById('symbol').value.trim();
+                    var startDate = document.getElementById('start_date').value;
+                    var endDate = document.getElementById('end_date').value;
+                    var dataType = document.getElementById('data_type').value;
+
+                    if (!symbol) {
+                        alert("请输入股票代码");
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/stocks/${symbol}?start_date=${startDate}&end_date=${endDate}`);
+                        if (!response.ok) {
+                            throw new Error('网络响应失败');
+                        }
+                        const data = await response.json();
+                        displaySearchResults(data, dataType);
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert("股票数据获取失败");
+                    }
+                });
+
+                // 显示搜索结果
+                function displaySearchResults(data, dataType) {
+                    var resultsDiv = document.getElementById('search-results');
+                    resultsDiv.innerHTML = ''; // 清空之前的内容
+
+                    var analysisDiv = document.createElement('div');
+                    analysisDiv.classList.add('stock-analysis');
+
+                    var header = document.createElement('h4');
+                    header.textContent = `${data.symbol} - ${data.name}`;
+                    analysisDiv.appendChild(header);
+
+                    // 根据数据类型显示不同内容
+                    if (['close_price', 'open_price', 'volume', 'turnover_rate', 'fund_flow'].includes(dataType)) {
+                        var plotDiv = document.createElement('div');
+                        plotDiv.id = 'searchChart';
+                        plotDiv.classList.add('plot');
+                        analysisDiv.appendChild(plotDiv);
+
+                        var yData = [];
+                        var yTitle = '';
+                        var lineColor = 'blue';
+
+                        switch(dataType) {
+                            case 'close_price':
+                                yData = data.historical_prices;
+                                yTitle = '收盘价';
+                                lineColor = 'blue';
+                                break;
+                            case 'open_price':
+                                yData = data.open_price;
+                                yTitle = '开盘价';
+                                lineColor = 'orange';
+                                break;
+                            case 'volume':
+                                yData = data.volume;
+                                yTitle = '成交量';
+                                lineColor = 'green';
+                                break;
+                            case 'turnover_rate':
+                                yData = data.turnover_rate;
+                                yTitle = '换手率 (%)';
+                                lineColor = 'purple';
+                                break;
+                            case 'fund_flow':
+                                yData = data.fund_flow;
+                                yTitle = '资金流入流出';
+                                lineColor = 'red';
+                                break;
+                            default:
+                                yData = data.historical_prices;
+                                yTitle = '收盘价';
+                                lineColor = 'blue';
+                        }
+
+                        Plotly.newPlot('searchChart', [{
+                            x: Array.from({length: yData.length}, (_, i) => `Day ${i+1}`),
+                            y: yData,
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            name: yTitle,
+                            line: {color: lineColor}
+                        }], {
+                            title: `${yTitle} 趋势`,
+                            plot_bgcolor: '#2c2f38',
+                            paper_bgcolor: '#2c2f38',
+                            font: {color: '#f5f5f5'},
+                            xaxis: {title: '时间'},
+                            yaxis: {title: yTitle}
+                        });
+                    }
+
+                    resultsDiv.appendChild(analysisDiv);
+                }
+
+                // 获取股票名称（根据symbol）
+                function getStockName(symbol) {
+                    var stock = document.querySelector(`[data-ts-code="${symbol}"]`);
+                    return stock ? stock.textContent.split(' - ')[1] : '未知股票';
+                }
+
+                // 处理板块表单提交
+                var sectorForm = document.getElementById('sector-form');
+                sectorForm.addEventListener('change', function(e) {
+                    var sector = document.getElementById('sector').value;
+                    if (!sector) {
+                        document.getElementById('sectors-stock-list').innerHTML = '';
+                        return;
+                    }
+
+                    // 根据板块请求对应的股票列表
+                    fetch(`/api/sectors/${sector}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            displaySectorStocks(data);
+                        })
+                        .catch(err => {
+                            console.error("获取板块股票失败：", err);
+                        });
+                });
+
+                // 显示板块股票
+                function displaySectorStocks(stocks) {
+                    var sectorsStockList = document.getElementById('sectors-stock-list');
+                    sectorsStockList.innerHTML = ''; // 清空之前的内容
+
+                    stocks.forEach(stock => {
+                        var stockDiv = document.createElement('div');
+                        stockDiv.classList.add('draggable-stock');
+                        stockDiv.setAttribute('data-ts-code', stock.symbol);
+                        stockDiv.setAttribute('data-bs-toggle', 'tooltip');
+                        stockDiv.setAttribute('title', `当前价: ${stock.current_price}, 涨跌幅: ${stock.change_percent}%, 成交量: ${stock.volume}`);
+                        stockDiv.textContent = `${stock.symbol} - ${stock.name}`;
+                        sectorsStockList.appendChild(stockDiv);
+                    });
+
+                    // 重新初始化Tooltips
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl)
+                    })
+                }
+
+                // 获取最新财经分析报告
+                fetch('/api/reports')
+                    .then(response => response.json())
+                    .then(data => {
+                        var latestReports = document.getElementById('latest-reports');
+                        latestReports.innerHTML = ''; // 清空之前的内容
+
+                        if (data.length === 0) {
+                            latestReports.innerHTML = '<p class="text-center text-light">暂无最新分析报告。</p>';
+                            return;
+                        }
+
+                        data.forEach(report => {
+                            var reportItem = document.createElement('li');
+                            reportItem.classList.add('list-group-item', 'bg-dark');
+                            reportItem.innerHTML = `<a href="${report.link}" target="_blank" class="text-warning">${report.title}</a>`;
+                            latestReports.appendChild(reportItem);
+                        });
+                    })
+                    .catch(err => {
+                        console.error("获取最新报告失败：", err);
+                    });
+
+                // 获取最佳股票 AI 分析
+                fetch('/api/top-ai-analysis')
+                    .then(response => response.json())
+                    .then(data => {
+                        var topAiAnalysisDiv = document.getElementById('top-ai-analysis');
+                        topAiAnalysisDiv.innerHTML = ''; // 清空之前的内容
+
+                        if (data.length === 0) {
+                            topAiAnalysisDiv.innerHTML = '<p class="text-center text-light">暂无最佳股票分析。</p>';
+                            return;
+                        }
+
+                        data.forEach(analysis => {
+                            var analysisDiv = document.createElement('div');
+                            analysisDiv.classList.add('stock-analysis');
+
+                            analysisDiv.innerHTML = `
+                                <h4>${analysis.symbol} - ${getStockName(analysis.symbol)}</h4>
+                                <div id="kline-${analysis.symbol}" class="plotly-graph-div"></div>
+                                <div class="ai-prediction">
+                                    <strong>AI分析结果：</strong>
+                                    <p>${analysis.ai_analysis}</p>
+                                </div>
+                            `;
+                            topAiAnalysisDiv.appendChild(analysisDiv);
+
+                            // 渲染K线图
+                            Plotly.newPlot(`kline-${analysis.symbol}`, [{
+                                x: Array.from({length: analysis.historical_prices.length}, (_, i) => `Day ${i+1}`),
+                                y: analysis.historical_prices,
+                                type: 'scatter',
+                                mode: 'lines+markers',
+                                name: '价格',
+                                line: {color: 'cyan'}
+                            }], {
+                                title: `${analysis.symbol} 价格趋势`,
+                                plot_bgcolor: '#2c2f38',
+                                paper_bgcolor: '#2c2f38',
+                                font: {color: '#f5f5f5'},
+                                xaxis: {title: '时间'},
+                                yaxis: {title: '价格'}
+                            });
+                        });
+                    })
+                    .catch(err => {
+                        console.error("获取最佳股票 AI 分析失败：", err);
+                    });
+
+                // 获取推荐股票并显示
+                function loadRecommendedStocks() {
+                    fetch('/api/recommended')
+                        .then(response => response.json())
+                        .then(data => {
+                            var recommendationsStockList = document.getElementById('recommendations-stock-list');
+                            recommendationsStockList.innerHTML = ''; // 清空之前的内容
+
+                            if (data.length === 0) {
+                                recommendationsStockList.innerHTML = '<p class="text-center text-light">暂无推荐股票。</p>';
+                                return;
+                            }
+
+                            data.forEach(stock => {
+                                var stockDiv = document.createElement('div');
+                                stockDiv.classList.add('draggable-stock');
+                                stockDiv.setAttribute('data-ts-code', stock.symbol);
+                                stockDiv.setAttribute('data-bs-toggle', 'tooltip');
+                                stockDiv.setAttribute('title', `当前价: ${stock.current_price}, 涨跌幅: ${stock.change_percent}%, 成交量: ${stock.volume}`);
+                                stockDiv.textContent = `${stock.symbol} - ${stock.name}`;
+                                recommendationsStockList.appendChild(stockDiv);
+                            });
+
+                            // 重新初始化Tooltips
+                            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                                return new bootstrap.Tooltip(tooltipTriggerEl)
+                            })
+                        })
+                        .catch(err => {
+                            console.error("获取推荐股票失败：", err);
+                        });
+                }
+
+                // 初始加载推荐股票
+                loadRecommendedStocks();
+
+                // 显示股票分析窗口
+                function showStockAnalysisWindow() {
+                    var stockAnalysisWindow = document.getElementById('stock-analysis-window');
+                    stockAnalysisWindow.style.display = 'flex';
+                }
+
+                // Toggle Stock Analysis Window
+                var toggleStockAnalysisBtn = document.getElementById('toggle-stock-analysis-window');
+                toggleStockAnalysisBtn.addEventListener('click', function() {
+                    var stockAnalysisWindow = document.getElementById('stock-analysis-window');
+                    if (stockAnalysisWindow.style.display === 'none' || stockAnalysisWindow.style.display === '') {
+                        stockAnalysisWindow.style.display = 'flex';
+                        toggleStockAnalysisBtn.textContent = '−';
+                    } else {
+                        stockAnalysisWindow.style.display = 'none';
+                        toggleStockAnalysisBtn.textContent = '+';
+                    }
+                });
+
+                // Make the stock analysis window draggable
+                makeDraggable(document.getElementById("stock-analysis-window"), ".stock-analysis-header");
+
+                // Handle floating AI window
+                var aiWindow = document.getElementById('floating-ai-window');
+                var toggleAiWindowBtn = document.getElementById('toggle-ai-window');
+                var aiChatBox = document.getElementById('ai-chat-box');
+                var aiInput = document.getElementById('ai-input');
+                var aiSendBtn = document.getElementById('ai-send-btn');
+
+                toggleAiWindowBtn.addEventListener('click', function() {
+                    if (aiWindow.style.display === 'none' || aiWindow.style.display === '') {
+                        aiWindow.style.display = 'flex';
+                        toggleAiWindowBtn.textContent = '−';
+                    } else {
+                        aiWindow.style.display = 'none';
+                        toggleAiWindowBtn.textContent = '+';
+                    }
+                });
+
+                aiSendBtn.addEventListener('click', function() {
+                    var message = aiInput.value.trim();
+                    if (message) {
+                        socket.emit('send_message', {'message': message});
+                        appendChatMessage('用户', message, 'ai-chat-box');
+                        aiInput.value = '';
+                    }
+                });
+
+                // Make the floating AI window draggable
+                makeDraggable(document.getElementById("floating-ai-window"), ".floating-ai-header");
+
+                // Function to make an element draggable
+                function makeDraggable(elmnt, handleSelector) {
+                    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                    var handle = elmnt.querySelector(handleSelector);
+                    if (handle) {
+                        handle.onmousedown = dragMouseDown;
+                    }
+
+                    function dragMouseDown(e) {
+                        e = e || window.event;
+                        e.preventDefault();
+                        pos3 = e.clientX;
+                        pos4 = e.clientY;
+                        document.onmouseup = closeDragElement;
+                        document.onmousemove = elementDrag;
+                        // 禁止文字选择
+                        document.body.classList.add('no-select');
+                    }
+
+                    function elementDrag(e) {
+                        e = e || window.event;
+                        e.preventDefault();
+                        pos1 = pos3 - e.clientX;
+                        pos2 = pos4 - e.clientY;
+                        pos3 = e.clientX;
+                        pos4 = e.clientY;
+                        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+                    }
+
+                    function closeDragElement() {
+                        document.onmouseup = null;
+                        document.onmousemove = null;
+                        // 恢复文字选择
+                        document.body.classList.remove('no-select');
+                    }
+                }
+            });
+        </script>
+    </div>
+</body>
+
+</html>
